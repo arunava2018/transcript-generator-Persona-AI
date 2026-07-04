@@ -5,26 +5,20 @@ from youtube_transcript_api import YouTubeTranscriptApi
 # CONFIG
 # ---------------------------------------
 
-PERSONA = "hitesh"
+PERSONA = "piyush"
 
 VIDEO_IDS = [
-    "CvuNdXB_UQg",
-    "02ctXgIHMb0",
-    "tKOuP4nP5jE",
-    "ZmjBN_SY5xo",
-    "v=5n_utsAVI-g",
-    "VCqiwPs8ISE",
-    "1YzNl1tkAik",
-    "5YqP18Gyop0",
-    "B5LZnYYoLtY",
-    "dZyQNy3-HjU",
-    "hYIb2xs0vvk",
-    "Csr2iU8O_rw",
-    "g7T0TbcgDdY",
-    "WepZXtywOAs",
-    "FHCKOP25Z1A",
-    "kYeDJhA4XIw",
-    "pERZpUPHBFI",
+    "p8ngBrlr9nY",
+    "nomgFESEYZI",
+    "qhsVMiBjxM0",
+    "K45s2PgywvI",
+    "f3zHina9MTo",
+    "6gBJ5jAIdQI",
+    "SI7gdRQcGSY",
+    "kRR1K3q5nlg",
+    "Y4lpmVymXD4",
+    "TcQtqzDtP5A",
+    "nm9TCcgE4cQ"
     # Add more ids here
 ]
 

@@ -1,10 +1,10 @@
 import json
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
+from groq import Groq
 
 from prompts import FEW_SHOTS_PROMPT
 
@@ -14,15 +14,15 @@ from prompts import FEW_SHOTS_PROMPT
 
 load_dotenv()
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
-PERSONA = "hitesh"
+PERSONA = "piyush"
 
-MODEL = "gemini-3.5-flash"
+MODEL = "llama-3.3-70b-versatile"
+
 INPUT_FILE = Path(f"analysis/final/{PERSONA}/{PERSONA}.persona.json")
-
 OUTPUT_FILE = Path(f"analysis/final/{PERSONA}/{PERSONA}.fewshots.json")
 
 # ---------------------------------------------------
@@ -51,34 +51,73 @@ Persona:
 """
 
 # ---------------------------------------------------
-# Gemini
+# JSON Parser
 # ---------------------------------------------------
 
-response = client.models.generate_content(
+def parse_json_response(raw_text: str):
+    text = (raw_text or "").strip()
 
-    model=MODEL,
+    if not text:
+        raise ValueError("The model returned an empty response.")
 
-    contents=user_prompt,
+    cleaned = text
 
-    config=types.GenerateContentConfig(
+    if cleaned.startswith("```"):
+        fence_match = re.match(r"```(?:json)?\s*(.*?)\s*```", cleaned, re.S)
+        if fence_match:
+            cleaned = fence_match.group(1).strip()
 
-        system_instruction=FEW_SHOTS_PROMPT,
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
 
-        response_mime_type="application/json",
+    decoder = json.JSONDecoder()
 
-        temperature=0.8
+    for start in ("{", "["):
+        start_idx = cleaned.find(start)
 
+        while start_idx != -1:
+            candidate = cleaned[start_idx:]
+
+            try:
+                parsed, _ = decoder.raw_decode(candidate)
+                return parsed
+            except json.JSONDecodeError:
+                start_idx = cleaned.find(start, start_idx + 1)
+
+    raise ValueError(
+        f"Could not parse JSON from model response:\n{cleaned[:2000]}"
     )
 
+# ---------------------------------------------------
+# Groq
+# ---------------------------------------------------
+
+response = client.chat.completions.create(
+    model=MODEL,
+    messages=[
+        {
+            "role": "system",
+            "content": FEW_SHOTS_PROMPT,
+        },
+        {
+            "role": "user",
+            "content": user_prompt,
+        },
+    ],
+    temperature=0.8,
+    response_format={"type": "json_object"},
 )
 
-response_text = response.text.strip()
+response_text = response.choices[0].message.content.strip()
 
-if response_text.startswith("```json"):
-    response_text = response_text.replace("```json", "")
-    response_text = response_text.replace("```", "").strip()
-
-fewshots = json.loads(response_text)
+try:
+    fewshots = parse_json_response(response_text)
+except (ValueError, json.JSONDecodeError) as exc:
+    print("Failed to parse model response as JSON.")
+    print(response_text[:4000])
+    raise SystemExit(exc) from exc
 
 # ---------------------------------------------------
 # Save
@@ -86,17 +125,12 @@ fewshots = json.loads(response_text)
 
 OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-with open(
-    OUTPUT_FILE,
-    "w",
-    encoding="utf-8"
-) as f:
-
+with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
     json.dump(
         fewshots,
         f,
         indent=4,
-        ensure_ascii=False
+        ensure_ascii=False,
     )
 
 print("=" * 80)

@@ -14,14 +14,14 @@ from prompts import BATCH_ANALYSIS_PROMPT
 load_dotenv()
 
 client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
-PERSONA = "hitesh"
+PERSONA = "piyush"
 
 BATCH_SIZE = 4
 
-MODEL = "gemini-3.5-flash"
+MODEL = "llama-3.3-70b-versatile"
 
 TRANSCRIPT_DIR = Path(f"transcripts/{PERSONA}")
 
@@ -95,7 +95,7 @@ Transcripts:
 
     print("Sending request to Gemini...\n")
 
-    response = client.models.generate_content(
+    response = client.chat.completions.create(
         model=MODEL,
         contents=prompt,
     )

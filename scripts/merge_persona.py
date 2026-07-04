@@ -6,6 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from groq import Groq
 
 from prompts import MERGE_PERSONA_PROMPT
 
@@ -15,13 +16,13 @@ from prompts import MERGE_PERSONA_PROMPT
 
 load_dotenv()
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
-PERSONA = "hitesh"
+PERSONA = "piyush"
 
-MODEL = "gemini-2.5-flash"
+MODEL = "llama-3.3-70b-versatile"
 
 INPUT_DIR = Path(f"analysis/intermediate/{PERSONA}")
 
@@ -103,28 +104,26 @@ def parse_json_response(raw_text: str):
 
 
 # ---------------------------------------------------
-# Gemini
+# GROQ
 # ---------------------------------------------------
 
-response = client.models.generate_content(
-
+response = client.chat.completions.create(
     model=MODEL,
-
-    contents=user_prompt,
-
-    config=types.GenerateContentConfig(
-
-        system_instruction=MERGE_PERSONA_PROMPT,
-
-        response_mime_type="application/json",
-
-        temperature=0.1
-
-    )
-
+    messages=[
+        {
+            "role": "system",
+            "content": MERGE_PERSONA_PROMPT,
+        },
+        {
+            "role": "user",
+            "content": user_prompt,
+        }
+    ],
 )
 
-response_text = response.text.strip()
+response_text = response.choices[0].message.content.strip()
+
+# response_text = response.text.strip()
 
 try:
     persona = parse_json_response(response_text)
