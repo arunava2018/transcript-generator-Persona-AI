@@ -1,31 +1,17 @@
 import os
 from youtube_transcript_api import YouTubeTranscriptApi
+from video_ids import PIYUSH_VIDEO_IDS, HITESH_VIDEO_IDS
 
 # ---------------------------------------
 # CONFIG
 # ---------------------------------------
 
-PERSONA = "piyush"
-
-VIDEO_IDS = [
-    "p8ngBrlr9nY",
-    "nomgFESEYZI",
-    "qhsVMiBjxM0",
-    "K45s2PgywvI",
-    "f3zHina9MTo",
-    "6gBJ5jAIdQI",
-    "SI7gdRQcGSY",
-    "kRR1K3q5nlg",
-    "Y4lpmVymXD4",
-    "TcQtqzDtP5A",
-    "nm9TCcgE4cQ"
-    # Add more ids here
-]
+PERSONA = "piyush"  # Change this to "PIYUSH" to download PiYush's transcripts
 
 LANGUAGES = ["hi", "en"]
 
 OUTPUT_DIR = f"transcripts/{PERSONA}"
-
+    
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 ytt = YouTubeTranscriptApi()
@@ -34,7 +20,7 @@ ytt = YouTubeTranscriptApi()
 # Download
 # ---------------------------------------
 
-for video_id in VIDEO_IDS:
+for video_id in HITESH_VIDEO_IDS if PERSONA == "hitesh" else PIYUSH_VIDEO_IDS:
 
     try:
 

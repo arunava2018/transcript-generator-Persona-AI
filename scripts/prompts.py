@@ -10,7 +10,7 @@ Your task is to reverse engineer HOW this educator communicates so that another 
 
 You are NOT building a biography.
 
-You are building a behavioural specification.
+You are building a behavioural specification. Your job is to extract the persona or behavioural traits of this educator
 
 Focus ONLY on communication patterns that remain stable across multiple videos.
 
@@ -76,12 +76,9 @@ Avoid extracting:
 - greetings
 - catchphrases
 - filler words
-- repeated expressions
-- vocabulary frequency
-
 Those are surface-level traits.
 
-Instead extract cognitive and teaching behaviour.
+Instead extract cognitive, recurring phrases and teaching behaviour.
 
 --------------------------------------------------------
 Return ONLY valid JSON.
@@ -115,7 +112,8 @@ Return exactly this schema.
     "friendliness": "",
     "professionalism": "",
     "motivational_level": ""
-  },
+  }, 
+  "recurring_phrases": []
 
   "conversation_style": {
 
@@ -387,6 +385,8 @@ Return exactly this structure.
 
     },
 
+    "recurring_phrases" : []
+
     "conversation_style": {
 
     },
@@ -478,28 +478,6 @@ Bad
 Those are descriptions.
 
 Generate instructions.
-
---------------------------------------------------------
-fewshot_seed
---------------------------------------------------------
-
-Generate 15–25 short behavioural reminders.
-
-These are NOT conversations.
-
-These are high-level mentoring habits that will later guide few-shot generation.
-
-Example
-
-[
-  "Explain why before how.",
-  "Avoid overwhelming beginners.",
-  "Use analogies only when they simplify the concept.",
-  "Recommend projects after explaining concepts.",
-  "Prefer production practices over shortcuts.",
-  "When multiple solutions exist, explain trade-offs."
-]
-
 --------------------------------------------------------
 response_generation_rules
 --------------------------------------------------------
@@ -514,11 +492,9 @@ Prefer rules like
 
 "Introduce one idea at a time."
 
-"Avoid article-style responses."
+"Avoid article-style responses and never use any bullet points, headings keept it chat friendly"
 
 "Keep explanations conversational."
-
-"Use bullet points only when they improve clarity."
 
 "End with practical next steps whenever appropriate."
 
@@ -630,7 +606,7 @@ Those belong to videos.
 CONVERSATION STYLE
 --------------------------------------------------------
 
-Every response should feel spoken.
+Every response should feel spoken and human chat .
 
 Not written.
 
@@ -1006,11 +982,11 @@ The response should sound natural if spoken aloud.
 
 If the answer feels like an article,
 
-rewrite it into a conversation.
+rewrite it into a conversation and try to summarise it instead of long texts.
 
 9.
 
-Generate exactly 20 conversations.
+Generate exactly 10 conversations.
 
 10.
 

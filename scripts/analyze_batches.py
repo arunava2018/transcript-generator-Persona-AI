@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -14,20 +15,63 @@ from prompts import BATCH_ANALYSIS_PROMPT
 load_dotenv()
 
 client = genai.Client(
-    api_key=os.getenv("GROQ_API_KEY")
+    api_key=os.getenv("GEMINI_API_KEY")
 )
 
-PERSONA = "piyush"
+PERSONA = "hitesh"
 
 BATCH_SIZE = 4
 
-MODEL = "llama-3.3-70b-versatile"
+MODEL = "gemini-2.5-flash"
 
 TRANSCRIPT_DIR = Path(f"transcripts/{PERSONA}")
-
 OUTPUT_DIR = Path(f"analysis/intermediate/{PERSONA}")
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# ---------------------------------------------------
+# JSON Parser
+# ---------------------------------------------------
+
+def parse_json_response(raw_text: str):
+    text = (raw_text or "").strip()
+
+    if not text:
+        raise ValueError("The model returned an empty response.")
+
+    cleaned = text
+
+    # Remove markdown code fences if present
+    if cleaned.startswith("```"):
+        fence_match = re.match(r"```(?:json)?\s*(.*?)\s*```", cleaned, re.S)
+        if fence_match:
+            cleaned = fence_match.group(1).strip()
+
+    # Try parsing directly
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # Try extracting the first valid JSON object/array
+    decoder = json.JSONDecoder()
+
+    for start in ("{", "["):
+        start_idx = cleaned.find(start)
+
+        while start_idx != -1:
+            candidate = cleaned[start_idx:]
+
+            try:
+                parsed, _ = decoder.raw_decode(candidate)
+                return parsed
+            except json.JSONDecodeError:
+                start_idx = cleaned.find(start, start_idx + 1)
+
+    raise ValueError(
+        f"Could not parse JSON from model response:\n{cleaned[:2000]}"
+    )
+
 
 # ---------------------------------------------------
 # Read transcript files
@@ -77,14 +121,10 @@ VIDEO : {file.stem}
 
 """
 
-    prompt = f"""
-{BATCH_ANALYSIS_PROMPT}
-
-----------------------------------------------------
-
+    user_prompt = f"""
 The following transcripts belong to the SAME educator.
 
-Analyze ONLY the educator's communication style.
+Analyze ONLY the educator's communication style and recurring phrases.
 
 Ignore the programming concepts.
 
@@ -95,29 +135,28 @@ Transcripts:
 
     print("Sending request to Gemini...\n")
 
-    response = client.chat.completions.create(
+    response = client.models.generate_content(
         model=MODEL,
-        contents=prompt,
+        contents=user_prompt,
+        config={
+            "system_instruction": BATCH_ANALYSIS_PROMPT,
+            "temperature": 0.2,
+            "response_mime_type": "application/json",
+        },
     )
-    print(response.text)
 
-    # Gemini sometimes wraps JSON in ```json blocks
-    response_text = response.text.strip()
+    response_text = (response.text or "").strip()
 
-    if response_text.startswith("```json"):
-        response_text = response_text.replace("```json", "")
-        response_text = response_text.replace("```", "").strip()
-
-    persona_json = json.loads(response_text)
+    try:
+        persona_json = parse_json_response(response_text)
+    except (ValueError, json.JSONDecodeError) as exc:
+        print("Failed to parse JSON response.")
+        print(response_text[:4000])
+        raise SystemExit(exc) from exc
 
     output_file = OUTPUT_DIR / f"batch_{batch_index}.json"
 
-    with open(
-        output_file,
-        "w",
-        encoding="utf-8"
-    ) as f:
-
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(
             persona_json,
             f,
@@ -127,4 +166,6 @@ Transcripts:
 
     print(f"Saved -> {output_file}\n")
 
+print("=" * 80)
 print("Finished Successfully")
+print("=" * 80)
