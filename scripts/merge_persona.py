@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -70,6 +71,37 @@ Analyses:
 {json.dumps(merged, indent=2, ensure_ascii=False)}
 """
 
+def parse_json_response(raw_text: str):
+    text = (raw_text or "").strip()
+    if not text:
+        raise ValueError("The model returned an empty response.")
+
+    cleaned = text
+
+    if cleaned.startswith("```"):
+        fence_match = re.match(r"```(?:json)?\s*(.*?)\s*```", cleaned, re.S)
+        if fence_match:
+            cleaned = fence_match.group(1).strip()
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    decoder = json.JSONDecoder()
+    for start in ("{", "["):
+        start_idx = cleaned.find(start)
+        while start_idx != -1:
+            candidate = cleaned[start_idx:]
+            try:
+                parsed, _ = decoder.raw_decode(candidate)
+                return parsed
+            except json.JSONDecodeError:
+                start_idx = cleaned.find(start, start_idx + 1)
+
+    raise ValueError(f"Could not parse JSON from model response:\n{cleaned[:2000]}")
+
+
 # ---------------------------------------------------
 # Gemini
 # ---------------------------------------------------
@@ -94,11 +126,12 @@ response = client.models.generate_content(
 
 response_text = response.text.strip()
 
-if response_text.startswith("```json"):
-    response_text = response_text.replace("```json", "")
-    response_text = response_text.replace("```", "").strip()
-
-persona = json.loads(response_text)
+try:
+    persona = parse_json_response(response_text)
+except (ValueError, json.JSONDecodeError) as exc:
+    print("Failed to parse model response as JSON.")
+    print(response_text[:4000])
+    raise SystemExit(exc) from exc
 
 # ---------------------------------------------------
 # Save
