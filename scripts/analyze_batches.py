@@ -22,7 +22,7 @@ PERSONA = "hitesh"
 
 BATCH_SIZE = 4
 
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-1.5-flash"
 
 TRANSCRIPT_DIR = Path(f"transcripts/{PERSONA}")
 OUTPUT_DIR = Path(f"analysis/intermediate/{PERSONA}")
