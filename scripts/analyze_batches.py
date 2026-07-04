@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 from dotenv import load_dotenv
-from google import genai
+from openai import OpenAI
 
 from prompts import BATCH_ANALYSIS_PROMPT
 
@@ -14,20 +14,27 @@ from prompts import BATCH_ANALYSIS_PROMPT
 
 load_dotenv()
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
+client = OpenAI(
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    base_url="https://openrouter.ai/api/v1",
 )
 
-PERSONA = "hitesh"
+PERSONA = "piyush"
 
 BATCH_SIZE = 4
 
-MODEL = "gemini-1.5-flash"
+# Examples:
+# "google/gemini-2.5-pro"
+# "google/gemini-2.5-flash"
+# "google/gemini-2.0-flash-001"
+
+MODEL = "poolside/laguna-xs-2.1:free"
 
 TRANSCRIPT_DIR = Path(f"transcripts/{PERSONA}")
 OUTPUT_DIR = Path(f"analysis/intermediate/{PERSONA}")
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 
 # ---------------------------------------------------
 # JSON Parser
@@ -41,32 +48,32 @@ def parse_json_response(raw_text: str):
 
     cleaned = text
 
-    # Remove markdown code fences if present
+    # Remove markdown code fences
     if cleaned.startswith("```"):
-        fence_match = re.match(r"```(?:json)?\s*(.*?)\s*```", cleaned, re.S)
-        if fence_match:
-            cleaned = fence_match.group(1).strip()
+        match = re.match(r"```(?:json)?\s*(.*?)\s*```", cleaned, re.S)
+        if match:
+            cleaned = match.group(1).strip()
 
-    # Try parsing directly
+    # Direct parse
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
 
-    # Try extracting the first valid JSON object/array
+    # Extract first valid JSON object/array
     decoder = json.JSONDecoder()
 
     for start in ("{", "["):
-        start_idx = cleaned.find(start)
+        idx = cleaned.find(start)
 
-        while start_idx != -1:
-            candidate = cleaned[start_idx:]
+        while idx != -1:
+            candidate = cleaned[idx:]
 
             try:
                 parsed, _ = decoder.raw_decode(candidate)
                 return parsed
             except json.JSONDecodeError:
-                start_idx = cleaned.find(start, start_idx + 1)
+                idx = cleaned.find(start, idx + 1)
 
     raise ValueError(
         f"Could not parse JSON from model response:\n{cleaned[:2000]}"
@@ -81,6 +88,7 @@ files = sorted(TRANSCRIPT_DIR.glob("*.txt"))
 
 print(f"Found {len(files)} transcript(s)")
 
+
 # ---------------------------------------------------
 # Create batches
 # ---------------------------------------------------
@@ -91,6 +99,7 @@ batches = [
 ]
 
 print(f"Created {len(batches)} batch(es)\n")
+
 
 # ---------------------------------------------------
 # Process each batch
@@ -124,34 +133,53 @@ VIDEO : {file.stem}
     user_prompt = f"""
 The following transcripts belong to the SAME educator.
 
-Analyze ONLY the educator's communication style and recurring phrases.
+Analyze ONLY the educator's communication style, teaching style,
+personality, vocabulary, recurring phrases, tone, and behavioral patterns.
 
-Ignore the programming concepts.
+Ignore the programming concepts completely.
 
 Transcripts:
 
 {merged_transcript}
 """
 
-    print("Sending request to Gemini...\n")
+    print("Sending request to OpenRouter...\n")
 
-    response = client.models.generate_content(
+    response = client.chat.completions.create(
         model=MODEL,
-        contents=user_prompt,
-        config={
-            "system_instruction": BATCH_ANALYSIS_PROMPT,
-            "temperature": 0.2,
-            "response_mime_type": "application/json",
+        temperature=0.2,
+        messages=[
+            {
+                "role": "system",
+                "content": BATCH_ANALYSIS_PROMPT,
+            },
+            {
+                "role": "user",
+                "content": user_prompt,
+            },
+        ],
+        response_format={
+            "type": "json_object"
+        },
+        extra_headers={
+            # Optional but recommended by OpenRouter
+            "HTTP-Referer": "http://localhost:3000",
+            "X-Title": "Persona Analyzer",
         },
     )
 
-    response_text = (response.text or "").strip()
+    response_text = (
+        response.choices[0].message.content or ""
+    ).strip()
 
     try:
         persona_json = parse_json_response(response_text)
+
     except (ValueError, json.JSONDecodeError) as exc:
-        print("Failed to parse JSON response.")
+
+        print("Failed to parse JSON response.\n")
         print(response_text[:4000])
+
         raise SystemExit(exc) from exc
 
     output_file = OUTPUT_DIR / f"batch_{batch_index}.json"
@@ -165,6 +193,7 @@ Transcripts:
         )
 
     print(f"Saved -> {output_file}\n")
+
 
 print("=" * 80)
 print("Finished Successfully")

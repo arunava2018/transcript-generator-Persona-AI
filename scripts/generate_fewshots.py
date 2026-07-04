@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 from dotenv import load_dotenv
-from groq import Groq
+from openai import OpenAI
 
 from prompts import FEW_SHOTS_PROMPT
 
@@ -14,13 +14,17 @@ from prompts import FEW_SHOTS_PROMPT
 
 load_dotenv()
 
-client = Groq(
-    api_key=os.getenv("GROQ_API_KEY")
+client = OpenAI(
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    base_url="https://openrouter.ai/api/v1",
 )
 
-PERSONA = "piyush"
+PERSONA = "hitesh"
 
-MODEL = "llama-3.3-70b-versatile"
+# Examples:
+# google/gemini-2.5-flash
+# google/gemini-2.5-pro
+MODEL = "poolside/laguna-xs-2.1:free"
 
 INPUT_FILE = Path(f"analysis/final/{PERSONA}/{PERSONA}.persona.json")
 OUTPUT_FILE = Path(f"analysis/final/{PERSONA}/{PERSONA}.fewshots.json")
@@ -62,40 +66,45 @@ def parse_json_response(raw_text: str):
 
     cleaned = text
 
+    # Remove markdown code fences
     if cleaned.startswith("```"):
-        fence_match = re.match(r"```(?:json)?\s*(.*?)\s*```", cleaned, re.S)
-        if fence_match:
-            cleaned = fence_match.group(1).strip()
+        match = re.match(r"```(?:json)?\s*(.*?)\s*```", cleaned, re.S)
+        if match:
+            cleaned = match.group(1).strip()
 
+    # Direct parse
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
 
+    # Extract first valid JSON object/array
     decoder = json.JSONDecoder()
 
     for start in ("{", "["):
-        start_idx = cleaned.find(start)
+        idx = cleaned.find(start)
 
-        while start_idx != -1:
-            candidate = cleaned[start_idx:]
+        while idx != -1:
+            candidate = cleaned[idx:]
 
             try:
                 parsed, _ = decoder.raw_decode(candidate)
                 return parsed
             except json.JSONDecodeError:
-                start_idx = cleaned.find(start, start_idx + 1)
+                idx = cleaned.find(start, idx + 1)
 
     raise ValueError(
         f"Could not parse JSON from model response:\n{cleaned[:2000]}"
     )
 
 # ---------------------------------------------------
-# Groq
+# OpenRouter Request
 # ---------------------------------------------------
 
 response = client.chat.completions.create(
     model=MODEL,
+    temperature=0.8,
+    response_format={"type": "json_object"},
     messages=[
         {
             "role": "system",
@@ -106,17 +115,24 @@ response = client.chat.completions.create(
             "content": user_prompt,
         },
     ],
-    temperature=0.8,
-    response_format={"type": "json_object"},
+    extra_headers={
+        "HTTP-Referer": "http://localhost:3000",
+        "X-Title": "Persona Analyzer",
+    },
 )
 
-response_text = response.choices[0].message.content.strip()
+response_text = (
+    response.choices[0].message.content or ""
+).strip()
 
 try:
     fewshots = parse_json_response(response_text)
+
 except (ValueError, json.JSONDecodeError) as exc:
-    print("Failed to parse model response as JSON.")
+
+    print("Failed to parse model response as JSON.\n")
     print(response_text[:4000])
+
     raise SystemExit(exc) from exc
 
 # ---------------------------------------------------
