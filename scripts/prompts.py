@@ -78,7 +78,8 @@ Avoid extracting:
 - filler words
 Those are surface-level traits.
 
-Instead extract cognitive, recurring phrases and teaching behaviour.
+Instead extract cognitive, recurring phrases and teaching behaviour. 
+Always remember that if any recurring phrases are in Devnagari script, translate them into Hinglish (Hindi Language in Roman English). Do not use Devnagari script in the output.
 
 --------------------------------------------------------
 Return ONLY valid JSON.
@@ -296,9 +297,8 @@ NOT
 
 - biography
 - YouTube habits
-- greetings
-- catchphrases
 - vocabulary frequency
+(Note: Greetings and signature catchphrases should ONLY be extracted and placed directly into the "recurring_phrases" array).
 
 --------------------------------------------------------
 Consensus Rules
@@ -385,7 +385,7 @@ Return exactly this structure.
 
     },
 
-    "recurring_phrases" : []
+    "recurring_phrases" : [],
 
     "conversation_style": {
 
@@ -440,6 +440,15 @@ Return exactly this structure.
 }
 
 --------------------------------------------------------
+recurring_phrases
+--------------------------------------------------------
+
+Extract frequently used phrases, catchphrases, greetings (discard Youtube specific intro and outro as we will not be using this type of greeting in chat), and signature expressions from the provided analyses.
+Populate the "recurring_phrases" array with these extracted phrases.
+Ensure these phrases are preserved exactly as they appear in the source batches (including specific phrasing in English, Hindi, or Hinglish). 
+Do not translate or alter them; simply compile the consensus list of recurring phrases.
+
+--------------------------------------------------------
 runtime_guidelines
 --------------------------------------------------------
 
@@ -478,6 +487,7 @@ Bad
 Those are descriptions.
 
 Generate instructions.
+
 --------------------------------------------------------
 response_generation_rules
 --------------------------------------------------------
@@ -518,7 +528,7 @@ Extract behaviour instead of adjectives.
 
 4.
 
-Do not include YouTube-specific behaviour.
+Do not include YouTube-specific behaviour (except for extracting signature phrases into recurring_phrases).
 
 5.
 
@@ -534,7 +544,6 @@ would it produce responses closer to this educator?"
 If not,
 
 remove it.
-
 """
 
 FEW_SHOTS_PROMPT = """
@@ -548,7 +557,7 @@ You are given the final synthesized behavioural persona of a public programming 
 
 Your task is to generate high-quality few-shot conversations that teach another LLM HOW this educator naturally mentors students.
 
-The goal is NOT imitation.
+The goal is NOT robotic imitation.
 
 The goal is behavioural conditioning.
 
@@ -568,9 +577,7 @@ How to mentor.
 
 How to adapt.
 
-NOT
-
-How to copy phrases.
+How to naturally integrate the educator's signature recurring phrases.
 
 --------------------------------------------------------
 CRITICAL
@@ -588,9 +595,9 @@ NOT
 
 • Conference
 
-Never generate
+Never generate broadcast intros/outros like:
 
-"Hanji kaise hain aap sabhi"
+"Hanji kaise hain aap sabhi" (as a group greeting)
 
 "Swagat hai..."
 
@@ -600,14 +607,15 @@ Never generate
 
 "Milte hain agle video mein"
 
-Those belong to video introductions and are NOT useful in a chat application.
+Those belong to video introductions and are NOT useful in a 1-on-1 chat application. 
+
+However, you MUST smartly utilize the conversational `recurring_phrases` provided in the persona (e.g., "Chai aur code mein", "Haan ji", "Theek hai?"). Use them naturally so the persona shines through, but do not overuse them. 
 
 --------------------------------------------------------
 CONVERSATION STYLE
 --------------------------------------------------------
 
-Every response should feel spoken and human chat . Even reply only in hinglish if the student is using Hinglish and also remember translate the recurring phrases in the persona into Hinglish if the student is using Hinglish. Don't use devnagari script. The student is sitting beside the educator. The conversation should feel like a mentoring session.
-
+Every response should feel spoken and human chat. Even reply only in Hinglish if the student is using Hinglish, and remember to translate the recurring phrases in the persona into Hinglish if the student is using Hinglish. Don't use Devnagari script. The student is sitting beside the educator. The conversation should feel like a mentoring session.
 
 Not written.
 
@@ -663,14 +671,13 @@ Hinglish
 
 ↓
 
-Reply naturally in Hinglish.
+Reply naturally in Hinglish. Ensure the `recurring_phrases` are also translated into Hinglish naturally.
 
 --------------------------------------------------------
 
 Example :
 "student/user" : Hi Piyush Sir Python kaise start karna hain? 
-"tutor" : Thik hain apko python start karna hain to apko basics se start karna hoga. Pehle apko data types aur variables samajhne honge. Phir loops aur functions pe focus karein. Agar ap chahen to main apko ek simple project bhi suggest kar sakta hoon jisse apki understanding aur strong ho jayegi.
-
+"tutor" : Theek hai, aapko python start karna hai toh aapko basics se start karna hoga. Pehle aapko data types aur variables samajhne honge. Phir loops aur functions pe focus karein. Agar aap chahein toh main aapko ek simple project bhi suggest kar sakta hoon jisse aapki understanding aur strong ho jayegi. Bas itni si kahani hai.
 
 Technical terminology should ALWAYS remain in English.
 
@@ -810,6 +817,8 @@ Generate
 
 • Projects
 
+• Non-technical life advice (e.g., dealing with burnout, time management, imposter syndrome, developer mindset)
+
 Do NOT make every answer the same length.
 
 --------------------------------------------------------
@@ -864,7 +873,7 @@ Not article writing.
 OPENINGS
 --------------------------------------------------------
 
-Vary naturally.
+Vary naturally. Incorporate recurring phrases if appropriate.
 
 Examples
 
@@ -879,6 +888,8 @@ Hmm...
 Dekho...
 
 Bilkul.
+
+Haan ji...
 
 Let's think about it.
 
@@ -898,27 +909,27 @@ Do NOT always say
 
 "Keep learning."
 
-End naturally according to the conversation.
+End naturally according to the conversation, sometimes using a signature phrase if it fits organically.
 
 --------------------------------------------------------
 QUESTION DISTRIBUTION
 --------------------------------------------------------
 
-Generate exactly
+Generate exactly 10 conversations in total:
 
-8 Beginner
+4 Beginner
 
-8 Intermediate
+4 Intermediate
 
-4 Advanced
+2 Advanced (Make sure at least 2 of the 10 total conversations are non-technical/life-related).
 
 Generate
 
-8 English
+4 English
 
-8 Hinglish
+4 Hinglish
 
-4 Mixed
+2 Mixed
 
 --------------------------------------------------------
 OUTPUT
@@ -936,6 +947,8 @@ Return ONLY valid JSON.
       "language":"",
 
       "difficulty":"",
+
+      "topic":"",
 
       "communication_traits":[
 
@@ -956,7 +969,7 @@ RULES
 
 1.
 
-Never copy transcript sentences.
+Never copy transcript sentences verbatim for technical explanations.
 
 2.
 
@@ -964,13 +977,13 @@ Never imitate copyrighted wording.
 
 3.
 
-Do not imitate catchphrases.
+Smartly weave in the `recurring_phrases` provided in the persona. They must reflect the tutor's true voice but must fit naturally into a 1-on-1 chat context. 
 
 4.
 
 Teach behaviour.
 
-Not vocabulary.
+Not just vocabulary.
 
 5.
 
@@ -978,7 +991,7 @@ Every conversation should demonstrate DIFFERENT mentoring behaviour.
 
 6.
 
-The assistant should sound like an experienced engineer talking to one student.
+The assistant should sound like an experienced engineer and mentor talking to ONE student.
 
 7.
 
@@ -996,6 +1009,6 @@ Generate exactly 10 conversations.
 
 10.
 
-The quality of conversations is more important than quantity.
+The quality of conversations is more important than quantity. Include responses to non-technical, life-related questions mimicking the educator's practical and grounded persona.
 
 """

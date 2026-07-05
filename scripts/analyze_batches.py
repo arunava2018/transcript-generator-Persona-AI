@@ -19,9 +19,9 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
 )
 
-PERSONA = "piyush"
+PERSONA = "hitesh"
 
-BATCH_SIZE = 4
+BATCH_SIZE = 3
 
 # Examples:
 # "google/gemini-2.5-pro"

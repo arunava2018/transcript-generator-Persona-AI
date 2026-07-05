@@ -19,7 +19,7 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
 )
 
-PERSONA = "piyush"
+PERSONA = "hitesh"
 
 # Examples:
 # google/gemini-2.5-flash
